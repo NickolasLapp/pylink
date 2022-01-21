@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import binpacker
-from . import decorators
-from . import enums
-from . import errors
-from . import jlock
-from . import library
-from . import structs
-from . import unlockers
-from . import util
-
 import ctypes
 import datetime
 import functools
@@ -31,8 +21,20 @@ import math
 import operator
 import sys
 import time
+
 import six
 
+from . import (
+    binpacker,
+    decorators,
+    enums,
+    errors,
+    jlock,
+    library,
+    structs,
+    unlockers,
+    util,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,7 @@ class JLink(object):
         Returns:
           A decorator function.
         """
+
         def _minimum_required(func):
             """Internal decorator that wraps around the given function.
 
@@ -87,6 +90,7 @@ class JLink(object):
             Returns:
               The wrapper unction.
             """
+
             @functools.wraps(func)
             def wrapper(self, *args, **kwargs):
                 """Wrapper function to compare the DLL's SDK version.
@@ -103,9 +107,11 @@ class JLink(object):
                   JLinkException: if the DLL's version is less than ``version``.
                 """
                 if list(self.version) < list(version):
-                    raise errors.JLinkException('Version %s required.' % version)
+                    raise errors.JLinkException("Version %s required." % version)
                 return func(self, *args, **kwargs)
+
             return wrapper
+
         return _minimum_required
 
     def open_required(func):
@@ -118,6 +124,7 @@ class JLink(object):
         Returns:
           The wrapper function.
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             """Wrapper function to check that the given ``JLink`` has been
@@ -136,10 +143,11 @@ class JLink(object):
                   disconnected.
             """
             if not self.opened():
-                raise errors.JLinkException('J-Link DLL is not open.')
+                raise errors.JLinkException("J-Link DLL is not open.")
             elif not self.connected():
-                raise errors.JLinkException('J-Link connection has been lost.')
+                raise errors.JLinkException("J-Link connection has been lost.")
             return func(self, *args, **kwargs)
+
         return wrapper
 
     def connection_required(func):
@@ -152,6 +160,7 @@ class JLink(object):
         Returns:
           The wrapper function.
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             """Wrapper function to check that the given ``JLink`` has been
@@ -169,8 +178,9 @@ class JLink(object):
               JLinkException: if the JLink's target is not connected.
             """
             if not self.target_connected():
-                raise errors.JLinkException('Target is not connected.')
+                raise errors.JLinkException("Target is not connected.")
             return func(self, *args, **kwargs)
+
         return wrapper
 
     def coresight_configuration_required(func):
@@ -183,6 +193,7 @@ class JLink(object):
         Returns:
           The wrapper function.
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             """Wrapper function to check that the given ``JLink`` has been
@@ -200,8 +211,11 @@ class JLink(object):
               JLinkException: if the JLink's target is not connected.
             """
             if not self.target_connected() and not self._coresight_configured:
-                raise errors.JLinkException('Target is not connected neither coresight is not configured.')
+                raise errors.JLinkException(
+                    "Target is not connected neither coresight is not configured."
+                )
             return func(self, *args, **kwargs)
+
         return wrapper
 
     def interface_required(interface):
@@ -214,6 +228,7 @@ class JLink(object):
         Returns:
           A decorator function.
         """
+
         def _interface_required(func):
             """Internal decorator that wraps around the decorated function.
 
@@ -223,6 +238,7 @@ class JLink(object):
             Returns:
               The wrapper function.
             """
+
             @functools.wraps(func)
             def wrapper(self, *args, **kwargs):
                 """Wrapper function to check that the given ``JLink`` has the
@@ -241,13 +257,25 @@ class JLink(object):
                       the wrapped method.
                 """
                 if self.tif != interface:
-                    raise errors.JLinkException('Unsupported for current interface.')
+                    raise errors.JLinkException("Unsupported for current interface.")
                 return func(self, *args, **kwargs)
+
             return wrapper
+
         return _interface_required
 
-    def __init__(self, lib=None, log=None, detailed_log=None, error=None, warn=None, unsecure_hook=None,
-                 serial_no=None, ip_addr=None, open_tunnel=False):
+    def __init__(
+        self,
+        lib=None,
+        log=None,
+        detailed_log=None,
+        error=None,
+        warn=None,
+        unsecure_hook=None,
+        serial_no=None,
+        ip_addr=None,
+        open_tunnel=False,
+    ):
         """Initializes the J-Link interface object.
 
         Note:
@@ -292,7 +320,7 @@ class JLink(object):
             lib = library.Library()
 
         if lib.dll() is None:
-            raise TypeError('Expected to be given a valid DLL.')
+            raise TypeError("Expected to be given a valid DLL.")
 
         self._library = lib
         self._dll = lib.dll()
@@ -317,10 +345,12 @@ class JLink(object):
         self._dll.JLINKARM_GetCompileDateTime.restype = ctypes.POINTER(ctypes.c_char)
         self._dll.JLINKARM_GetRegisterName.restype = ctypes.POINTER(ctypes.c_char)
 
-        self.error_handler = lambda s: (error or logger.error)(s.decode(errors='replace'))
-        self.warning_handler = lambda s: (warn or logger.warning)(s.decode(errors='replace'))
-        self.log_handler = lambda s: (log or logger.info)(s.decode(errors='replace'))
-        self.detailed_log_handler = lambda s: (detailed_log or logger.debug)(s.decode(errors='replace'))
+        self.error_handler = lambda s: (error or logger.error)(s.decode(errors="replace"))
+        self.warning_handler = lambda s: (warn or logger.warning)(s.decode(errors="replace"))
+        self.log_handler = lambda s: (log or logger.info)(s.decode(errors="replace"))
+        self.detailed_log_handler = lambda s: (detailed_log or logger.debug)(
+            s.decode(errors="replace")
+        )
 
         # Parameters used for open() in context manager
         self.__serial_no = serial_no
@@ -431,7 +461,7 @@ class JLink(object):
                 result = regs.index(register)
             except ValueError:
                 error_message = "No register found matching name: {}. (available registers: {})"
-                raise errors.JLinkException(error_message.format(register, ', '.join(regs)))
+                raise errors.JLinkException(error_message.format(register, ", ".join(regs)))
         return result
 
     def opened(self):
@@ -637,10 +667,10 @@ class JLink(object):
         Raises:
           ``JLinkException``: if chip is unsupported.
         """
-        index = self._dll.JLINKARM_DEVICE_GetIndex(chip_name.encode('ascii'))
+        index = self._dll.JLINKARM_DEVICE_GetIndex(chip_name.encode("ascii"))
 
         if index <= 0:
-            raise errors.JLinkException('Unsupported device selected.')
+            raise errors.JLinkException("Unsupported device selected.")
 
         return index
 
@@ -670,7 +700,7 @@ class JLink(object):
           ValueError: if index is less than 0 or >= supported device count.
         """
         if not util.is_natural(index) or index >= self.num_supported_devices():
-            raise ValueError('Invalid index.')
+            raise ValueError("Invalid index.")
 
         info = structs.JLinkDeviceInfo()
 
@@ -708,11 +738,11 @@ class JLink(object):
         self.close()
 
         if ip_addr is not None:
-            addr, port = ip_addr.rsplit(':', 1)
+            addr, port = ip_addr.rsplit(":", 1)
             if serial_no is None:
                 result = self._dll.JLINKARM_SelectIP(addr.encode(), int(port))
                 if result == 1:
-                    raise errors.JLinkException('Could not connect to emulator at %s.' % ip_addr)
+                    raise errors.JLinkException("Could not connect to emulator at %s." % ip_addr)
             else:
                 # Note: No return code when selecting IP by serial number.
                 self._dll.JLINKARM_EMU_SelectIPBySN(int(serial_no))
@@ -720,7 +750,7 @@ class JLink(object):
         elif serial_no is not None:
             result = self._dll.JLINKARM_EMU_SelectByUSBSN(int(serial_no))
             if result < 0:
-                raise errors.JLinkException('No emulator with serial number %s found.' % serial_no)
+                raise errors.JLinkException("No emulator with serial number %s found." % serial_no)
 
         else:
             # The original method of connecting to USB0-3 via
@@ -728,7 +758,7 @@ class JLink(object):
             # preserved here to simplify workflows using one emulator:
             result = self._dll.JLINKARM_SelectUSB(0)
             if result != 0:
-                raise errors.JlinkException('Could not connect to default emulator.')
+                raise errors.JlinkException("Could not connect to default emulator.")
 
         # Acquire the lock for the J-Link being opened only if the serial
         # number was passed in, otherwise skip it here.  Note that the lock
@@ -737,7 +767,7 @@ class JLink(object):
         if serial_no is not None:
             self._lock = jlock.JLock(serial_no)
             if not self._lock.acquire():
-                raise errors.JLinkException('J-Link is already open.')
+                raise errors.JLinkException("J-Link is already open.")
 
         result = self._dll.JLINKARM_OpenEx(self.log_handler, self.error_handler)
         result = ctypes.cast(result, ctypes.c_char_p).value
@@ -748,7 +778,7 @@ class JLink(object):
         # have to be done after 'open()'.  The unsecure hook is only supported
         # on versions greater than V4.98a.
         unsecure_hook = self._unsecure_hook
-        if unsecure_hook is not None and hasattr(self._dll, 'JLINK_SetHookUnsecureDialog'):
+        if unsecure_hook is not None and hasattr(self._dll, "JLINK_SetHookUnsecureDialog"):
             self.unsecure_hook = enums.JLinkFunctions.UNSECURE_HOOK_PROTOTYPE(unsecure_hook)
             self._dll.JLINK_SetHookUnsecureDialog(self.unsecure_hook)
 
@@ -766,7 +796,7 @@ class JLink(object):
         Returns:
           ``None``
         """
-        return self.open(ip_addr='tunnel:' + str(serial_no) + ':' + str(port))
+        return self.open(ip_addr="tunnel:" + str(serial_no) + ":" + str(port))
 
     def close(self):
         """Closes the open J-Link.
@@ -808,7 +838,7 @@ class JLink(object):
           ``True`` if test passed, otherwise ``False``.
         """
         res = self._dll.JLINKARM_Test()
-        return (res == 0)
+        return res == 0
 
     @open_required
     def set_log_file(self, file_path):
@@ -847,7 +877,7 @@ class JLink(object):
         Raises:
           JLinkException: on hardware error.
         """
-        self.exec_command('InvalidateFW')
+        self.exec_command("InvalidateFW")
         return None
 
     @open_required
@@ -897,7 +927,7 @@ class JLink(object):
             res = self.open(serial_no=serial_no)
 
             if self.firmware_newer():
-                raise errors.JLinkException('Failed to sync firmware version.')
+                raise errors.JLinkException("Failed to sync firmware version.")
 
             return res
 
@@ -913,7 +943,7 @@ class JLink(object):
                 pass
 
             if self.firmware_outdated():
-                raise errors.JLinkException('Failed to sync firmware version.')
+                raise errors.JLinkException("Failed to sync firmware version.")
 
             return self.open(serial_no=serial_no)
 
@@ -951,7 +981,7 @@ class JLink(object):
 
         return res
 
-    @minimum_required('5.02')
+    @minimum_required("5.02")
     def enable_dialog_boxes(self):
         """Enables showing dialog boxes on certain methods.
 
@@ -964,12 +994,12 @@ class JLink(object):
         Returns:
           ``None``
         """
-        self.exec_command('SetBatchMode = 0')
+        self.exec_command("SetBatchMode = 0")
         self.exec_command("HideDeviceSelection = 0")
         self.exec_command("EnableInfoWinFlashDL")
         self.exec_command("EnableInfoWinFlashBPs")
 
-    @minimum_required('5.02')
+    @minimum_required("5.02")
     def disable_dialog_boxes(self):
         """Disables showing dialog boxes on certain methods.
 
@@ -987,9 +1017,9 @@ class JLink(object):
         Returns:
           ``None``
         """
-        self.exec_command('SilentUpdateFW')
-        self.exec_command('SuppressInfoUpdateFW')
-        self.exec_command('SetBatchMode = 1')
+        self.exec_command("SilentUpdateFW")
+        self.exec_command("SuppressInfoUpdateFW")
+        self.exec_command("SetBatchMode = 1")
 
         # SuppressControlPanel
         self.exec_command("HideDeviceSelection = 1")
@@ -1019,23 +1049,19 @@ class JLink(object):
           ValueError: if ``instr_regs`` or ``data_bits`` are not natural numbers
         """
         if not util.is_natural(instr_regs):
-            raise ValueError('IR value is not a natural number.')
+            raise ValueError("IR value is not a natural number.")
 
         if not util.is_natural(data_bits):
-            raise ValueError('Data bits is not a natural number.')
+            raise ValueError("Data bits is not a natural number.")
 
         self._dll.JLINKARM_ConfigJTAG(instr_regs, data_bits)
         return None
 
     @open_required
-    @minimum_required('4.98e')
-    def coresight_configure(self,
-                            ir_pre=0,
-                            dr_pre=0,
-                            ir_post=0,
-                            dr_post=0,
-                            ir_len=0,
-                            perform_tif_init=True):
+    @minimum_required("4.98e")
+    def coresight_configure(
+        self, ir_pre=0, dr_pre=0, ir_post=0, dr_post=0, ir_len=0, perform_tif_init=True
+    ):
         """Prepares target and J-Link for CoreSight function usage.
 
         Args:
@@ -1065,7 +1091,7 @@ class JLink(object):
         if self.tif == enums.JLinkInterfaces.SWD:
             # No special setup is needed for SWD, just need to output the
             # switching sequence.
-            res = self._dll.JLINKARM_CORESIGHT_Configure('')
+            res = self._dll.JLINKARM_CORESIGHT_Configure("")
             if res < 0:
                 raise errors.JLinkException(res)
 
@@ -1074,11 +1100,11 @@ class JLink(object):
             return None
 
         # JTAG requires more setup than SWD.
-        config_string = 'IRPre=%s;DRPre=%s;IRPost=%s;DRPost=%s;IRLenDevice=%s;'
+        config_string = "IRPre=%s;DRPre=%s;IRPost=%s;DRPost=%s;IRLenDevice=%s;"
         config_string = config_string % (ir_pre, dr_pre, ir_post, dr_post, ir_len)
 
         if not perform_tif_init:
-            config_string = config_string + ('PerformTIFInit=0;')
+            config_string = config_string + ("PerformTIFInit=0;")
 
         res = self._dll.JLINKARM_CORESIGHT_Configure(config_string.encode())
         if res < 0:
@@ -1089,7 +1115,7 @@ class JLink(object):
         return None
 
     @open_required
-    def connect(self, chip_name, speed='auto', verbose=False):
+    def connect(self, chip_name, speed="auto", verbose=False):
         """Connects the J-Link to its target.
 
         Args:
@@ -1107,7 +1133,7 @@ class JLink(object):
         """
 
         if verbose:
-            self.exec_command('EnableRemarks = 1')
+            self.exec_command("EnableRemarks = 1")
 
         # Determine which device we are.  This is essential for using methods
         # like 'unlock' or 'lock'.
@@ -1117,13 +1143,13 @@ class JLink(object):
 
         # This is weird but is currently the only way to specify what the
         # target is to the J-Link.
-        self.exec_command('Device = %s' % chip_name)
+        self.exec_command("Device = %s" % chip_name)
 
         # Need to select target interface speed here, so the J-Link knows what
         # speed to use to establish target communication.
-        if speed == 'auto':
+        if speed == "auto":
             self.set_speed(auto=True)
-        elif speed == 'adaptive':
+        elif speed == "adaptive":
             self.set_speed(adaptive=True)
         else:
             self.set_speed(speed)
@@ -1201,8 +1227,8 @@ class JLink(object):
         major = version / 10000
         minor = (version / 100) % 100
         rev = version % 100
-        rev = '' if rev == 0 else chr(rev + ord('a') - 1)
-        return '%d.%02d%s' % (major, minor, rev)
+        rev = "" if rev == 0 else chr(rev + ord("a") - 1)
+        return "%d.%02d%s" % (major, minor, rev)
 
     @property
     @open_required
@@ -1219,7 +1245,7 @@ class JLink(object):
         Raises:
           JLinkException: on error.
         """
-        identifier = self.firmware_version.split('compiled')[0]
+        identifier = self.firmware_version.split("compiled")[0]
         buf_size = self.MAX_BUF_SIZE
         buf = (ctypes.c_char * buf_size)()
         res = self._dll.JLINKARM_GetEmbeddedFWString(identifier.encode(), buf, buf_size)
@@ -1243,14 +1269,14 @@ class JLink(object):
           ``True`` if the J-Link's firmware is older than the one supported by
           the DLL, otherwise ``False``.
         """
-        datefmt = ' %b %d %Y %H:%M:%S'
+        datefmt = " %b %d %Y %H:%M:%S"
 
-        compat_date = self.compatible_firmware_version.split('compiled')[1]
+        compat_date = self.compatible_firmware_version.split("compiled")[1]
         compat_date = datetime.datetime.strptime(compat_date, datefmt)
 
-        fw_date = self.firmware_version.split('compiled')[1]
+        fw_date = self.firmware_version.split("compiled")[1]
         fw_date = datetime.datetime.strptime(fw_date, datefmt)
-        return (compat_date > fw_date)
+        return compat_date > fw_date
 
     @open_required
     def firmware_newer(self):
@@ -1323,7 +1349,7 @@ class JLink(object):
         stat = structs.JLinkHardwareStatus()
         res = self._dll.JLINKARM_GetHWStatus(ctypes.byref(stat))
         if res == 1:
-            raise errors.JLinkException('Error in reading hardware status.')
+            raise errors.JLinkException("Error in reading hardware status.")
         return stat
 
     @property
@@ -1341,7 +1367,7 @@ class JLink(object):
         version = self._dll.JLINKARM_GetHardwareVersion()
         major = version / 10000 % 100
         minor = version / 100 % 100
-        return '%d.%02d' % (major, minor)
+        return "%d.%02d" % (major, minor)
 
     @property
     @open_required
@@ -1406,7 +1432,7 @@ class JLink(object):
           ``False``.
         """
         res = self._dll.JLINKARM_EMU_HasCapEx(capability)
-        return (res == 1)
+        return res == 1
 
     @property
     @open_required
@@ -1427,7 +1453,7 @@ class JLink(object):
         if len(result) == 0:
             return list()
 
-        return result.split(', ')
+        return result.split(", ")
 
     @property
     @open_required
@@ -1475,7 +1501,7 @@ class JLink(object):
         buf = (ctypes.c_char * self.MAX_BUF_SIZE)()
         res = self._dll.JLINKARM_GetOEMString(ctypes.byref(buf))
         if res != 0:
-            raise errors.JLinkException('Failed to grab OEM string.')
+            raise errors.JLinkException("Failed to grab OEM string.")
 
         oem = ctypes.string_at(buf).decode()
         if len(oem) == 0:
@@ -1538,11 +1564,11 @@ class JLink(object):
         if speed is None:
             speed = 0
         elif not util.is_natural(speed):
-            raise TypeError('Expected positive number for speed, given %s.' % speed)
+            raise TypeError("Expected positive number for speed, given %s." % speed)
         elif speed > self.MAX_JTAG_SPEED:
-            raise ValueError('Given speed exceeds max speed of %d.' % self.MAX_JTAG_SPEED)
+            raise ValueError("Given speed exceeds max speed of %d." % self.MAX_JTAG_SPEED)
         elif speed < self.MIN_JTAG_SPEED:
-            raise ValueError('Given speed is too slow.  Minimum is %d.' % self.MIN_JTAG_SPEED)
+            raise ValueError("Given speed is too slow.  Minimum is %d." % self.MIN_JTAG_SPEED)
 
         if auto:
             speed = speed | self.AUTO_JTAG_SPEED
@@ -1603,7 +1629,7 @@ class JLink(object):
 
     @property
     @open_required
-    @minimum_required('4.98b')
+    @minimum_required("4.98b")
     def custom_licenses(self):
         """Returns a string of the installed licenses the J-Link has.
 
@@ -1620,7 +1646,7 @@ class JLink(object):
         return ctypes.string_at(buf).decode()
 
     @open_required
-    @minimum_required('4.98b')
+    @minimum_required("4.98b")
     def add_license(self, contents):
         """Adds the given ``contents`` as a new custom license to the J-Link.
 
@@ -1644,16 +1670,16 @@ class JLink(object):
         res = self._dll.JLINK_EMU_AddLicense(buf)
 
         if res == -1:
-            raise errors.JLinkException('Unspecified error.')
+            raise errors.JLinkException("Unspecified error.")
         elif res == -2:
-            raise errors.JLinkException('Failed to read/write license area.')
+            raise errors.JLinkException("Failed to read/write license area.")
         elif res == -3:
-            raise errors.JLinkException('J-Link out of space.')
+            raise errors.JLinkException("J-Link out of space.")
 
-        return (res == 0)
+        return res == 0
 
     @open_required
-    @minimum_required('4.98b')
+    @minimum_required("4.98b")
     def erase_licenses(self):
         """Erases the custom licenses from the connected J-Link.
 
@@ -1667,7 +1693,7 @@ class JLink(object):
           ``True`` on success, otherwise ``False``.
         """
         res = self._dll.JLINK_EMU_EraseLicenses()
-        return (res == 0)
+        return res == 0
 
     @property
     @open_required
@@ -1713,7 +1739,7 @@ class JLink(object):
           JLinkException: if the given interface is invalid or unsupported.
         """
         if not ((1 << interface) & self.supported_tifs()):
-            raise errors.JLinkException('Unsupported target interface: %s' % interface)
+            raise errors.JLinkException("Unsupported target interface: %s" % interface)
 
         # The return code here is actually *NOT* the previous set interface, it
         # is ``0`` on success, otherwise ``1``.
@@ -1775,9 +1801,9 @@ class JLink(object):
         size = len(pins)
         indices = (ctypes.c_uint8 * size)(*pins)
         statuses = (ctypes.c_uint8 * size)()
-        result = self._dll.JLINK_EMU_GPIO_GetState(ctypes.byref(indices),
-                                                   ctypes.byref(statuses),
-                                                   size)
+        result = self._dll.JLINK_EMU_GPIO_GetState(
+            ctypes.byref(indices), ctypes.byref(statuses), size
+        )
         if result < 0:
             raise errors.JLinkException(result)
 
@@ -1803,16 +1829,15 @@ class JLink(object):
           ValueError: if ``len(pins) != len(states)``
         """
         if len(pins) != len(states):
-            raise ValueError('Length mismatch between pins and states.')
+            raise ValueError("Length mismatch between pins and states.")
 
         size = len(pins)
         indices = (ctypes.c_uint8 * size)(*pins)
         states = (ctypes.c_uint8 * size)(*states)
         result_states = (ctypes.c_uint8 * size)()
-        result = self._dll.JLINK_EMU_GPIO_SetState(ctypes.byref(indices),
-                                                   ctypes.byref(states),
-                                                   ctypes.byref(result_states),
-                                                   size)
+        result = self._dll.JLINK_EMU_GPIO_SetState(
+            ctypes.byref(indices), ctypes.byref(states), ctypes.byref(result_states), size
+        )
         if result < 0:
             raise errors.JLinkException(result)
 
@@ -1850,8 +1875,8 @@ class JLink(object):
           JLinkException: if J-Link does not support powering the target.
         """
         if default:
-            return self.exec_command('SupplyPowerDefault = 1')
-        return self.exec_command('SupplyPower = 1')
+            return self.exec_command("SupplyPowerDefault = 1")
+        return self.exec_command("SupplyPower = 1")
 
     @open_required
     def power_off(self, default=False):
@@ -1871,8 +1896,8 @@ class JLink(object):
           JLinkException: if J-Link does not support powering the target.
         """
         if default:
-            return self.exec_command('SupplyPowerDefault = 0')
-        return self.exec_command('SupplyPower = 0')
+            return self.exec_command("SupplyPowerDefault = 0")
+        return self.exec_command("SupplyPower = 0")
 
     @connection_required
     def unlock(self):
@@ -1894,7 +1919,7 @@ class JLink(object):
           JLinkException: if the device fails to unlock.
         """
         if not unlockers.unlock(self, self._device.manufacturer):
-            raise errors.JLinkException('Failed to unlock device.')
+            raise errors.JLinkException("Failed to unlock device.")
 
         return True
 
@@ -1914,7 +1939,7 @@ class JLink(object):
           ``capability`` for the CPU it is connected to, otherwise ``False``.
         """
         res = self._dll.JLINKARM_EMU_HasCPUCap(capability)
-        return (res == 1)
+        return res == 1
 
     @connection_required
     def set_trace_source(self, source):
@@ -2013,7 +2038,7 @@ class JLink(object):
         """
         res = self._dll.JLINKARM_SetTCK()
         if res < 0:
-            raise errors.JLinkException('Feature not supported.')
+            raise errors.JLinkException("Feature not supported.")
         return None
 
     @connection_required
@@ -2031,7 +2056,7 @@ class JLink(object):
         """
         res = self._dll.JLINKARM_ClrTCK()
         if res < 0:
-            raise errors.JLinkException('Feature not supported.')
+            raise errors.JLinkException("Feature not supported.")
         return None
 
     @connection_required
@@ -2167,7 +2192,7 @@ class JLink(object):
           JLinkException: on hardware errors.
         """
         if flags != 0:
-            raise errors.JLinkException('Flags are reserved for future use.')
+            raise errors.JLinkException("Flags are reserved for future use.")
 
         if on_progress is not None:
             # Set the function to be called on flash programming progress.
@@ -2301,7 +2326,7 @@ class JLink(object):
           ValueError: if instruction count is not a natural number.
         """
         if not util.is_natural(num_instructions):
-            raise ValueError('Invalid instruction count: %s.' % num_instructions)
+            raise ValueError("Invalid instruction count: %s." % num_instructions)
 
         if not self.halted():
             return False
@@ -2313,6 +2338,28 @@ class JLink(object):
         self._dll.JLINKARM_GoEx(num_instructions, flags)
 
         return True
+
+    @connection_required
+    def resume(self):
+        """Resumes execution on the CPU Core.
+
+        Args:
+          self (JLink): the ``JLink`` instance
+
+        Returns:
+          ``True`` if resumed, ``False`` otherwise.
+
+        Raises:
+          JLinkException: if the device is not halted.
+        """
+        if not self.halted():
+            raise errors.JLinkException("The device was not halted when calling resume.")
+
+        res = int(self._dll.JLINKARM_Go())
+        if res == 0:
+            return not self.halted()
+
+        return False
 
     @connection_required
     @decorators.async_decorator
@@ -2348,7 +2395,7 @@ class JLink(object):
         if result < 0:
             raise errors.JLinkException(result)
 
-        return (result > 0)
+        return result > 0
 
     @connection_required
     def core_id(self):
@@ -2571,7 +2618,7 @@ class JLink(object):
           `JTAG Technical Overview <https://www.xjtag.com/about-jtag/jtag-a-technical-overview>`_.
         """
         if not util.is_natural(num_bits) or num_bits <= 0 or num_bits > 32:
-            raise ValueError('Number of bits must be >= 1 and <= 32.')
+            raise ValueError("Number of bits must be >= 1 and <= 32.")
         self._dll.JLINKARM_StoreBits(tms, tdi, num_bits)
         return None
 
@@ -2914,7 +2961,7 @@ class JLink(object):
             access = 4
             buf_size = buf_size * access
         else:
-            raise ValueError('Given bit size is invalid: %s' % nbits)
+            raise ValueError("Given bit size is invalid: %s" % nbits)
 
         args = [addr, buf_size, buf, access]
 
@@ -3058,7 +3105,7 @@ class JLink(object):
             access = 4
             buf_size = buf_size * access
         else:
-            raise ValueError('Given bit size is invalid: %s' % nbits)
+            raise ValueError("Given bit size is invalid: %s" % nbits)
 
         args = [addr, buf_size, buf, access]
 
@@ -3149,7 +3196,7 @@ class JLink(object):
         words = []
         bitmask = 0xFFFFFFFF
         for long_word in data:
-            words.append(long_word & bitmask)          # Last 32-bits
+            words.append(long_word & bitmask)  # Last 32-bits
             words.append((long_word >> 32) & bitmask)  # First 32-bits
         return self.memory_write32(addr, words, zone=zone)
 
@@ -3228,7 +3275,7 @@ class JLink(object):
             reg_index = self._get_register_index_from_name(reg_index)
         res = self._dll.JLINKARM_WriteReg(reg_index, value)
         if res != 0:
-            raise errors.JLinkException('Error writing to register %d' % reg_index)
+            raise errors.JLinkException("Error writing to register %d" % reg_index)
         return value
 
     @connection_required
@@ -3254,7 +3301,7 @@ class JLink(object):
         # TODO: rename 'register_indices' to 'registers'
         register_indices = register_indices[:]
         if len(register_indices) != len(values):
-            raise ValueError('Must be an equal number of registers and values')
+            raise ValueError("Must be an equal number of registers and values")
 
         num_regs = len(register_indices)
         for idx, indice in enumerate(register_indices):
@@ -3313,7 +3360,7 @@ class JLink(object):
           ``True`` if the CPU has the ETM unit, otherwise ``False``.
         """
         res = self._dll.JLINKARM_ETM_IsPresent()
-        if (res == 1):
+        if res == 1:
             return True
 
         # JLINKARM_ETM_IsPresent() only works on ARM 7/9 devices.  This
@@ -3322,7 +3369,7 @@ class JLink(object):
         info = ctypes.c_uint32(0)
         index = enums.JLinkROMTable.ETM
         res = self._dll.JLINKARM_GetDebugInfo(index, ctypes.byref(info))
-        if (res == 1):
+        if res == 1:
             return False
 
         return True
@@ -3515,7 +3562,7 @@ class JLink(object):
           ``True`` if target was big endian before call, otherwise ``False``.
         """
         res = self._dll.JLINKARM_SetEndian(0)
-        return (res == 1)
+        return res == 1
 
     @connection_required
     def set_big_endian(self):
@@ -3528,7 +3575,7 @@ class JLink(object):
           ``True`` if target was little endian before call, otherwise ``False``.
         """
         res = self._dll.JLINKARM_SetEndian(1)
-        return (res == 0)
+        return res == 0
 
     @connection_required
     def set_vector_catch(self, flags):
@@ -3653,16 +3700,10 @@ class JLink(object):
             enums.JLinkBreakpoint.THUMB,
             enums.JLinkBreakpoint.SW_RAM,
             enums.JLinkBreakpoint.SW_FLASH,
-            enums.JLinkBreakpoint.HW
+            enums.JLinkBreakpoint.HW,
         ]
 
-        set_flags = [
-            arm,
-            thumb,
-            ram,
-            flash,
-            hw
-        ]
+        set_flags = [arm, thumb, ram, flash, hw]
 
         if not any(set_flags):
             flags = enums.JLinkBreakpoint.ANY
@@ -3696,13 +3737,13 @@ class JLink(object):
           ValueError: if both the handle and index are invalid.
         """
         if index < 0 and handle == 0:
-            raise ValueError('Handle must be provided if index is not set.')
+            raise ValueError("Handle must be provided if index is not set.")
 
         bp = structs.JLinkBreakpointInfo()
         bp.Handle = int(handle)
         res = self._dll.JLINKARM_GetBPInfoEx(index, ctypes.byref(bp))
         if res < 0:
-            raise errors.JLinkException('Failed to get breakpoint info.')
+            raise errors.JLinkException("Failed to get breakpoint info.")
 
         return bp
 
@@ -3751,7 +3792,7 @@ class JLink(object):
 
         handle = self._dll.JLINKARM_SetBPEx(int(addr), flags)
         if handle <= 0:
-            raise errors.JLinkException('Breakpoint could not be set.')
+            raise errors.JLinkException("Breakpoint could not be set.")
 
         return handle
 
@@ -3798,7 +3839,7 @@ class JLink(object):
 
         handle = self._dll.JLINKARM_SetBPEx(int(addr), flags)
         if handle <= 0:
-            raise errors.JLinkException('Software breakpoint could not be set.')
+            raise errors.JLinkException("Software breakpoint could not be set.")
 
         return handle
 
@@ -3833,7 +3874,7 @@ class JLink(object):
 
         handle = self._dll.JLINKARM_SetBPEx(int(addr), flags)
         if handle <= 0:
-            raise errors.JLinkException('Hardware breakpoint could not be set.')
+            raise errors.JLinkException("Hardware breakpoint could not be set.")
 
         return handle
 
@@ -3911,32 +3952,34 @@ class JLink(object):
           ValueError: if both handle and index are invalid.
         """
         if index < 0 and handle == 0:
-            raise ValueError('Handle must be provided if index is not set.')
+            raise ValueError("Handle must be provided if index is not set.")
 
         wp = structs.JLinkWatchpointInfo()
         res = self._dll.JLINKARM_GetWPInfoEx(index, ctypes.byref(wp))
         if res < 0:
-            raise errors.JLinkException('Failed to get watchpoint info.')
+            raise errors.JLinkException("Failed to get watchpoint info.")
 
         for i in range(res):
             res = self._dll.JLINKARM_GetWPInfoEx(i, ctypes.byref(wp))
             if res < 0:
-                raise errors.JLinkException('Failed to get watchpoint info.')
+                raise errors.JLinkException("Failed to get watchpoint info.")
             elif wp.Handle == handle or wp.WPUnit == index:
                 return wp
 
         return None
 
     @connection_required
-    def watchpoint_set(self,
-                       addr,
-                       addr_mask=0x0,
-                       data=0x0,
-                       data_mask=0x0,
-                       access_size=None,
-                       read=False,
-                       write=False,
-                       privileged=False):
+    def watchpoint_set(
+        self,
+        addr,
+        addr_mask=0x0,
+        data=0x0,
+        data_mask=0x0,
+        access_size=None,
+        read=False,
+        write=False,
+        privileged=False,
+    ):
         """Sets a watchpoint at the given address.
 
         This method allows for a watchpoint to be set on an given address or
@@ -3996,7 +4039,7 @@ class JLink(object):
         elif access_size == 32:
             access_flags = access_flags | enums.JLinkAccessFlags.SIZE_32BIT
         else:
-            raise ValueError('Invalid access size given: %d' % access_size)
+            raise ValueError("Invalid access size given: %d" % access_size)
 
         # The read and write access flags cannot be specified together, so if
         # the user specifies that they want read and write access, then the
@@ -4075,21 +4118,21 @@ class JLink(object):
           TypeError: if ``instruction`` is not a number.
         """
         if not util.is_integer(instruction):
-            raise TypeError('Expected instruction to be an integer.')
+            raise TypeError("Expected instruction to be an integer.")
 
         buf_size = self.MAX_BUF_SIZE
         buf = (ctypes.c_char * buf_size)()
         res = self._dll.JLINKARM_DisassembleInst(ctypes.byref(buf), buf_size, instruction)
         if res < 0:
-            raise errors.JLinkException('Failed to disassemble instruction.')
+            raise errors.JLinkException("Failed to disassemble instruction.")
 
         return ctypes.string_at(buf).decode()
 
-###############################################################################
-#
-# STRACE API
-#
-###############################################################################
+    ###############################################################################
+    #
+    # STRACE API
+    #
+    ###############################################################################
 
     @connection_required
     def strace_configure(self, port_width):
@@ -4109,12 +4152,12 @@ class JLink(object):
           JLinkException: on error.
         """
         if port_width not in [1, 2, 4]:
-            raise ValueError('Invalid port width: %s' % str(port_width))
+            raise ValueError("Invalid port width: %s" % str(port_width))
 
-        config_string = 'PortWidth=%d' % port_width
+        config_string = "PortWidth=%d" % port_width
         res = self._dll.JLINK_STRACE_Config(config_string.encode())
         if res < 0:
-            raise errors.JLinkException('Failed to configure STRACE port')
+            raise errors.JLinkException("Failed to configure STRACE port")
 
         return None
 
@@ -4133,7 +4176,7 @@ class JLink(object):
         """
         res = self._dll.JLINK_STRACE_Start()
         if res < 0:
-            raise errors.JLinkException('Failed to start STRACE.')
+            raise errors.JLinkException("Failed to start STRACE.")
 
         return None
 
@@ -4155,7 +4198,7 @@ class JLink(object):
         """
         res = self._dll.JLINK_STRACE_Stop()
         if res < 0:
-            raise errors.JLinkException('Failed to stop STRACE.')
+            raise errors.JLinkException("Failed to stop STRACE.")
 
         return None
 
@@ -4183,13 +4226,13 @@ class JLink(object):
             ``num_instructions > 0x10000``.
         """
         if num_instructions < 0 or num_instructions > 0x10000:
-            raise ValueError('Invalid instruction count.')
+            raise ValueError("Invalid instruction count.")
 
         buf = (ctypes.c_uint32 * num_instructions)()
         buf_size = num_instructions
         res = self._dll.JLINK_STRACE_Read(ctypes.byref(buf), buf_size)
         if res < 0:
-            raise errors.JLinkException('Failed to read from STRACE buffer.')
+            raise errors.JLinkException("Failed to read from STRACE buffer.")
 
         return list(buf)[:res]
 
@@ -4223,13 +4266,9 @@ class JLink(object):
         return handle
 
     @connection_required
-    def strace_data_access_event(self,
-                                 operation,
-                                 address,
-                                 data,
-                                 data_mask=None,
-                                 access_width=4,
-                                 address_range=0):
+    def strace_data_access_event(
+        self, operation, address, data, data_mask=None, access_width=4, address_range=0
+    ):
         """Sets an event to trigger trace logic when data access is made.
 
         Data access corresponds to either a read or write.
@@ -4339,9 +4378,11 @@ class JLink(object):
           JLinkException: on error.
         """
         data = ctypes.c_int(handle)
-        res = self._dll.JLINK_STRACE_Control(enums.JLinkStraceCommand.TRACE_EVENT_CLR, ctypes.byref(data))
+        res = self._dll.JLINK_STRACE_Control(
+            enums.JLinkStraceCommand.TRACE_EVENT_CLR, ctypes.byref(data)
+        )
         if res < 0:
-            raise errors.JLinkException('Failed to clear STRACE event.')
+            raise errors.JLinkException("Failed to clear STRACE event.")
 
         return None
 
@@ -4361,7 +4402,7 @@ class JLink(object):
         data = 0
         res = self._dll.JLINK_STRACE_Control(enums.JLinkStraceCommand.TRACE_EVENT_CLR_ALL, data)
         if res < 0:
-            raise errors.JLinkException('Failed to clear all STRACE events.')
+            raise errors.JLinkException("Failed to clear all STRACE events.")
 
         return None
 
@@ -4381,15 +4422,15 @@ class JLink(object):
         size = ctypes.c_uint32(size)
         res = self._dll.JLINK_STRACE_Control(enums.JLinkStraceCommand.SET_BUFFER_SIZE, size)
         if res < 0:
-            raise errors.JLinkException('Failed to set the STRACE buffer size.')
+            raise errors.JLinkException("Failed to set the STRACE buffer size.")
 
         return None
 
-###############################################################################
-#
-# TRACE API
-#
-###############################################################################
+    ###############################################################################
+    #
+    # TRACE API
+    #
+    ###############################################################################
 
     @connection_required
     def trace_start(self):
@@ -4403,8 +4444,8 @@ class JLink(object):
         """
         cmd = enums.JLinkTraceCommand.START
         res = self._dll.JLINKARM_TRACE_Control(cmd, 0)
-        if (res == 1):
-            raise errors.JLinkException('Failed to start trace.')
+        if res == 1:
+            raise errors.JLinkException("Failed to start trace.")
         return None
 
     @connection_required
@@ -4419,8 +4460,8 @@ class JLink(object):
         """
         cmd = enums.JLinkTraceCommand.STOP
         res = self._dll.JLINKARM_TRACE_Control(cmd, 0)
-        if (res == 1):
-            raise errors.JLinkException('Failed to stop trace.')
+        if res == 1:
+            raise errors.JLinkException("Failed to stop trace.")
         return None
 
     @connection_required
@@ -4438,8 +4479,8 @@ class JLink(object):
         """
         cmd = enums.JLinkTraceCommand.FLUSH
         res = self._dll.JLINKARM_TRACE_Control(cmd, 0)
-        if (res == 1):
-            raise errors.JLinkException('Failed to flush the trace buffer.')
+        if res == 1:
+            raise errors.JLinkException("Failed to flush the trace buffer.")
         return None
 
     @connection_required
@@ -4455,8 +4496,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_NUM_SAMPLES
         data = ctypes.c_uint32(self.trace_max_buffer_capacity())
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get trace sample count.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get trace sample count.")
         return data.value
 
     @connection_required
@@ -4473,8 +4514,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_CONF_CAPACITY
         data = ctypes.c_uint32(0)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get trace buffer size.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get trace buffer size.")
         return data.value
 
     @connection_required
@@ -4491,8 +4532,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.SET_CAPACITY
         data = ctypes.c_uint32(size)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to set trace buffer size.')
+        if res == 1:
+            raise errors.JLinkException("Failed to set trace buffer size.")
         return None
 
     @connection_required
@@ -4508,8 +4549,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_MIN_CAPACITY
         data = ctypes.c_uint32(0)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get min trace buffer size.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get min trace buffer size.")
         return data.value
 
     @connection_required
@@ -4525,8 +4566,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_MAX_CAPACITY
         data = ctypes.c_uint32(0)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get max trace buffer size.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get max trace buffer size.")
         return data.value
 
     @connection_required
@@ -4544,8 +4585,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.SET_FORMAT
         data = ctypes.c_uint32(fmt)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to set trace format.')
+        if res == 1:
+            raise errors.JLinkException("Failed to set trace format.")
         return None
 
     @connection_required
@@ -4562,8 +4603,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_FORMAT
         data = ctypes.c_uint32(0)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get trace format.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get trace format.")
         return data.value
 
     @connection_required
@@ -4579,8 +4620,8 @@ class JLink(object):
         cmd = enums.JLinkTraceCommand.GET_NUM_REGIONS
         data = ctypes.c_uint32(0)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(data))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get trace region count.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get trace region count.")
         return data.value
 
     @connection_required
@@ -4598,8 +4639,8 @@ class JLink(object):
         region = structs.JLinkTraceRegion()
         region.RegionIndex = int(region_index)
         res = self._dll.JLINKARM_TRACE_Control(cmd, ctypes.byref(region))
-        if (res == 1):
-            raise errors.JLinkException('Failed to get trace region.')
+        if res == 1:
+            raise errors.JLinkException("Failed to get trace region.")
         return region
 
     @connection_required
@@ -4624,15 +4665,15 @@ class JLink(object):
         buf_size = ctypes.c_uint32(num_items)
         buf = (structs.JLinkTraceData * num_items)()
         res = self._dll.JLINKARM_TRACE_Read(buf, int(offset), ctypes.byref(buf_size))
-        if (res == 1):
-            raise errors.JLinkException('Failed to read from trace buffer.')
-        return list(buf)[:int(buf_size.value)]
+        if res == 1:
+            raise errors.JLinkException("Failed to read from trace buffer.")
+        return list(buf)[: int(buf_size.value)]
 
-###############################################################################
-#
-# Serial Wire Output API
-#
-###############################################################################
+    ###############################################################################
+    #
+    # Serial Wire Output API
+    #
+    ###############################################################################
 
     def swo_enabled(self):
         """Returns whether or not SWO is enabled.
@@ -4668,8 +4709,7 @@ class JLink(object):
 
         info = structs.JLinkSWOStartInfo()
         info.Speed = swo_speed
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.START,
-                                             ctypes.byref(info))
+        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.START, ctypes.byref(info))
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4724,10 +4764,9 @@ class JLink(object):
         if self.swo_enabled():
             self.swo_stop()
 
-        res = self._dll.JLINKARM_SWO_EnableTarget(cpu_speed,
-                                                  swo_speed,
-                                                  enums.JLinkSWOInterfaces.UART,
-                                                  port_mask)
+        res = self._dll.JLINKARM_SWO_EnableTarget(
+            cpu_speed, swo_speed, enums.JLinkSWOInterfaces.UART, port_mask
+        )
         if res != 0:
             raise errors.JLinkException(res)
 
@@ -4778,8 +4817,7 @@ class JLink(object):
             num_bytes = self.swo_num_bytes()
 
         buf = ctypes.c_uint32(num_bytes)
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.FLUSH,
-                                             ctypes.byref(buf))
+        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.FLUSH, ctypes.byref(buf))
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4800,8 +4838,9 @@ class JLink(object):
           JLinkException: on error
         """
         info = structs.JLinkSWOSpeedInfo()
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.GET_SPEED_INFO,
-                                             ctypes.byref(info))
+        res = self._dll.JLINKARM_SWO_Control(
+            enums.JLinkSWOCommands.GET_SPEED_INFO, ctypes.byref(info)
+        )
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4820,8 +4859,7 @@ class JLink(object):
         Raises:
           JLinkException: on error
         """
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.GET_NUM_BYTES,
-                                             0)
+        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.GET_NUM_BYTES, 0)
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4842,8 +4880,9 @@ class JLink(object):
           JLinkException: on error
         """
         buf = ctypes.c_uint32(buf_size)
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.SET_BUFFERSIZE_HOST,
-                                             ctypes.byref(buf))
+        res = self._dll.JLINKARM_SWO_Control(
+            enums.JLinkSWOCommands.SET_BUFFERSIZE_HOST, ctypes.byref(buf)
+        )
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4864,8 +4903,9 @@ class JLink(object):
           JLinkException: on error
         """
         buf = ctypes.c_uint32(buf_size)
-        res = self._dll.JLINKARM_SWO_Control(enums.JLinkSWOCommands.SET_BUFFERSIZE_EMU,
-                                             ctypes.byref(buf))
+        res = self._dll.JLINKARM_SWO_Control(
+            enums.JLinkSWOCommands.SET_BUFFERSIZE_EMU, ctypes.byref(buf)
+        )
         if res < 0:
             raise errors.JLinkException(res)
 
@@ -4947,7 +4987,7 @@ class JLink(object):
           ValueError: if ``port < 0`` or ``port > 31``
         """
         if port < 0 or port > 31:
-            raise ValueError('Invalid port number: %s' % port)
+            raise ValueError("Invalid port number: %s" % port)
 
         buf_size = num_bytes
         buf = (ctypes.c_uint8 * buf_size)()
@@ -4955,11 +4995,11 @@ class JLink(object):
 
         return list(buf)[:bytes_read]
 
-###############################################################################
-#
-# Real Time Terminal (RTT) API
-#
-###############################################################################
+    ###############################################################################
+    #
+    # Real Time Terminal (RTT) API
+    #
+    ###############################################################################
 
     @open_required
     def rtt_start(self, block_address=None):
@@ -5149,11 +5189,11 @@ class JLink(object):
 
         return res
 
-###############################################################################
-#
-# System control Co-Processor (CP15) API
-#
-###############################################################################
+    ###############################################################################
+    #
+    # System control Co-Processor (CP15) API
+    #
+    ###############################################################################
 
     @connection_required
     def cp15_present(self):
